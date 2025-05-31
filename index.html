@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Habit Tracker</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
     <div id="app">
       <h1>Daily Habit Tracker</h1>
+      <button id="settings-btn" class="settings-btn">⚙️ Settings</button>
       <form id="add-habit-form">
         <label for="habit-name">Habit Name:</label>
         <input type="text" id="habit-name" name="habit-name" required />
@@ -17,7 +19,29 @@
         <button type="submit">Add Habit</button>
       </form>
       <div id="habit-list-container"></div>
+      <!-- Monthly Statistics Graph -->
+      <div class="monthly-overview">
+        <div class="habit-selector">
+          <label for="habit-select">Select Habit:</label>
+          <select id="habit-select">
+            <option value="all">All Habits</option>
+          </select>
+        </div>
+        <canvas id="habits-chart"></canvas>
+      </div>
     </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Manage Habits</h2>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div id="habits-settings-list"></div>
+      </div>
+    </div>
+
     <script src="script.js" defer></script>
   </body>
 </html>

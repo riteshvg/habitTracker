@@ -4,6 +4,9 @@ const HabitSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String },
   completedDates: [{ type: Date }],
+  startDate: { type: Date, default: Date.now },
+  streakCount: { type: Number, default: 0 },
+  longestStreak: { type: Number, default: 0 },
 });
 
 const Habit = mongoose.models.Habit || mongoose.model('Habit', HabitSchema);
@@ -12,10 +15,7 @@ let conn = null;
 
 async function connectToDatabase(uri) {
   if (conn == null) {
-    conn = mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    conn = mongoose.connect(uri);
     await conn;
   }
   return conn;
@@ -49,13 +49,18 @@ exports.handler = async function (event, context) {
         body: JSON.stringify({ error: 'Habit name is required' }),
       };
     }
-    const habit = new Habit({ name, description });
+    const habit = new Habit({
+      name,
+      description,
+      startDate: new Date(),
+    });
     const savedHabit = await habit.save();
     return {
       statusCode: 201,
       body: JSON.stringify({ message: 'Habit created', habit: savedHabit }),
     };
   } catch (error) {
+    console.error(error); // Log the full error stack for debugging
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),
