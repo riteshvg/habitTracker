@@ -1,0 +1,7 @@
+[build]
+  functions = "functions" # Specifies the directory for Netlify Functions
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat" # Redirects /api/functionName to the actual function
+  status = 200
