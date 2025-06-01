@@ -14,14 +14,22 @@ const Habit = mongoose.models.Habit || mongoose.model('Habit', HabitSchema);
 let conn = null;
 
 async function connectToDatabase(uri) {
-  if (conn == null) {
-    conn = mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    await conn;
+  try {
+    if (conn == null) {
+      console.log('Creating new connection to MongoDB...');
+      conn = await mongoose.connect(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000, // Timeout after 5s
+        socketTimeoutMS: 45000, // Close sockets after 45s
+      });
+      console.log('Successfully connected to MongoDB');
+    }
+    return conn;
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    throw err;
   }
-  return conn;
 }
 
 function calculateStreak(dates, isCurrentStreak = false) {
@@ -29,19 +37,21 @@ function calculateStreak(dates, isCurrentStreak = false) {
 
   // Sort dates in descending order for current streak calculation
   const sortedDates = dates
-    .map(d => new Date(d))
-    .sort((a, b) => isCurrentStreak ? b - a : a - b);
+    .map((d) => new Date(d))
+    .sort((a, b) => (isCurrentStreak ? b - a : a - b));
 
   let currentStreak = 1;
   let maxStreak = 1;
-  
+
   // For current streak, check if the most recent date is today or yesterday
   if (isCurrentStreak) {
     const mostRecent = sortedDates[0];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const diffFromToday = Math.round((today - mostRecent) / (1000 * 60 * 60 * 24));
-    
+    const diffFromToday = Math.round(
+      (today - mostRecent) / (1000 * 60 * 60 * 24)
+    );
+
     if (diffFromToday > 1) {
       return 0; // Streak broken if most recent completion was before yesterday
     }

@@ -8,25 +8,74 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.querySelector('.close-modal');
   const habitsSettingsList = document.getElementById('habits-settings-list');
   const habitSelect = document.getElementById('habit-select');
+  const monthSelect = document.getElementById('month-select');
+  const loadingSpinner = document.getElementById('loading-spinner');
   let habitsChart = null;
+  let currentViewMonth = new Date();
+
+  // Function to show/hide loading spinner
+  function setLoading(show) {
+    loadingSpinner.style.display = show ? 'block' : 'none';
+  }
+
+  // Initialize month selector
+  function initializeMonthSelector() {
+    console.log('Initializing month selector...');
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), 0); // Start from January of current year
+    console.log('Start date:', startDate.toISOString());
+
+    while (startDate <= today) {
+      const option = document.createElement('option');
+      option.value = startDate.toISOString();
+      option.textContent = startDate.toLocaleString('default', {
+        month: 'long',
+        year: 'numeric',
+      });
+      console.log(
+        'Adding month option:',
+        option.textContent,
+        'value:',
+        option.value
+      );
+      if (
+        startDate.getMonth() === today.getMonth() &&
+        startDate.getFullYear() === today.getFullYear()
+      ) {
+        option.selected = true;
+        console.log('Setting current month as selected:', option.textContent);
+      }
+      monthSelect.appendChild(option);
+      startDate.setMonth(startDate.getMonth() + 1);
+    }
+    console.log('Month selector initialization complete');
+  }
+
+  // Event listener for month selection
+  monthSelect.addEventListener('change', (e) => {
+    console.log('Month selection changed:', e.target.value);
+    currentViewMonth = new Date(e.target.value);
+    console.log('Updated currentViewMonth:', currentViewMonth.toISOString());
+    fetchHabits();
+  });
 
   // Render habits in a calendar view by month/year
   function renderHabitsCalendar(habitsArray) {
     habitListContainer.innerHTML = '';
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth(); // 0-indexed
+    const year = currentViewMonth.getFullYear();
+    const month = currentViewMonth.getMonth(); // 0-indexed
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     // Create calendar header
     const calendarHeader = document.createElement('div');
     calendarHeader.className = 'calendar-header';
-    calendarHeader.innerHTML = `<strong>Habits for ${today.toLocaleString(
+    calendarHeader.innerHTML = `<strong>Habits for ${currentViewMonth.toLocaleString(
       'default',
       {
         month: 'long',
+        year: 'numeric',
       }
-    )} ${year}</strong>`;
+    )}</strong>`;
     habitListContainer.appendChild(calendarHeader);
 
     // Create and render calendar table
@@ -35,9 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     headRow.appendChild(document.createElement('th')); // Empty for habit name
+
     for (let d = 1; d <= daysInMonth; d++) {
       const th = document.createElement('th');
+      const date = new Date(year, month, d);
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       th.textContent = d;
+      if (isWeekend) {
+        th.classList.add('weekend');
+      }
       headRow.appendChild(th);
     }
     thead.appendChild(headRow);
@@ -122,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const statsHeader = document.createElement('h2');
     statsHeader.className = 'monthly-stats-header';
-    statsHeader.textContent = `Monthly Progress - ${today.toLocaleString(
+    statsHeader.textContent = `Monthly Progress - ${currentViewMonth.toLocaleString(
       'default',
       {
         month: 'long',
@@ -227,16 +282,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function fetchHabits() {
+    setLoading(true);
     try {
-      const response = await fetch('/api/getHabits');
-      if (!response.ok) throw new Error('Failed to fetch habits');
+      const response = await fetch('/.netlify/functions/getHabits');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || errorData.details || 'Failed to fetch habits'
+        );
+      }
       const data = await response.json();
       renderHabitsCalendar(data.habits || []);
       updateHabitSelect(data.habits || []);
       renderHabitsGraph(data.habits || [], 'all');
     } catch (err) {
-      habitListContainer.textContent = 'Error loading habits.';
-      console.error(err);
+      console.error('Error fetching habits:', err);
+      habitListContainer.textContent = `Error loading habits: ${err.message}`;
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -360,19 +423,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = nameInput.value.trim();
     const description = descInput.value.trim();
     if (!name) return;
+
     try {
-      const response = await fetch('/api/addHabit', {
+      const response = await fetch('/.netlify/functions/addHabit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description }),
       });
-      if (!response.ok) throw new Error('Failed to add habit');
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to add habit');
+      }
+
       nameInput.value = '';
       descInput.value = '';
       fetchHabits();
     } catch (err) {
-      alert('Error adding habit.');
-      console.error(err);
+      console.error('Error details:', err);
+      alert(`Error adding habit: ${err.message}`);
     }
   });
 
@@ -413,15 +483,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (target.classList.contains('calendar-checkbox')) {
       const habitId = target.getAttribute('data-id');
       const dateStr = target.getAttribute('data-date');
+      const today = new Date();
+      const selectedDate = new Date(dateStr);
 
       if (!habitId || !dateStr) return;
 
+      // Prevent modifying future dates
+      if (selectedDate > today) {
+        target.checked = false;
+        alert('Cannot mark future dates as complete');
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/completeHabit/${habitId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: dateStr }),
-        });
+        const response = await fetch(
+          `/.netlify/functions/completeHabit/${habitId}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: dateStr }),
+          }
+        );
 
         if (!response.ok) throw new Error('Failed to update habit completion');
 
@@ -453,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   async function fetchHabitsForSettings() {
+    setLoading(true);
     try {
       const response = await fetch('/api/getHabits');
       if (!response.ok) throw new Error('Failed to fetch habits');
@@ -461,6 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
       habitsSettingsList.innerHTML = 'Error loading habits.';
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -571,14 +656,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!newName) return;
 
         try {
-          const response = await fetch(`/api/editHabit/${habitId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: newName,
-              description: newDesc,
-            }),
-          });
+          const response = await fetch(
+            `/.netlify/functions/editHabit/${habitId}`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: newName,
+                description: newDesc,
+              }),
+            }
+          );
           if (!response.ok) throw new Error('Failed to edit habit');
           fetchHabitsForSettings();
           fetchHabits(); // Update main view
@@ -592,9 +680,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (target.classList.contains('delete-btn')) {
       if (confirm('Are you sure you want to delete this habit?')) {
         try {
-          const response = await fetch(`/api/deleteHabit/${habitId}`, {
-            method: 'DELETE',
-          });
+          const response = await fetch(
+            `/.netlify/functions/deleteHabit/${habitId}`,
+            {
+              method: 'DELETE',
+            }
+          );
           if (!response.ok) throw new Error('Failed to delete habit');
           fetchHabitsForSettings();
           fetchHabits(); // Update main view
@@ -606,21 +697,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Hide the add habit form by default, show with a button
-  addHabitForm.style.display = 'none';
-  const showAddBtn = document.createElement('button');
-  showAddBtn.textContent = 'Add New Habit';
-  showAddBtn.className = 'show-add-btn';
-  showAddBtn.onclick = () => {
-    addHabitForm.style.display =
-      addHabitForm.style.display === 'none' ? 'block' : 'none';
-  };
-  document.getElementById('app').insertBefore(showAddBtn, addHabitForm);
+  // Handle add habit button and form
+  const addHabitBtn = document.getElementById('add-habit-btn');
+  const cancelAddHabitBtn = document.getElementById('cancel-add-habit');
+  const formBackdrop = document.getElementById('form-backdrop');
 
+  function showAddHabitForm() {
+    addHabitForm.classList.remove('hidden');
+    formBackdrop.classList.add('active');
+    document.getElementById('habit-name').focus();
+  }
+
+  function hideAddHabitForm() {
+    addHabitForm.classList.add('hidden');
+    formBackdrop.classList.remove('active');
+    document.getElementById('habit-name').value = '';
+    document.getElementById('habit-description').value = '';
+  }
+
+  addHabitBtn.addEventListener('click', showAddHabitForm);
+  cancelAddHabitBtn.addEventListener('click', hideAddHabitForm);
+  formBackdrop.addEventListener('click', hideAddHabitForm);
+
+  // Initialize the month selector and fetch habits
+  console.log('Starting app initialization...');
+  initializeMonthSelector();
+  console.log('Month selector initialized, fetching habits...');
   fetchHabits();
 });
 
-function calculateMonthStats(habit, year, month) {
+function calculateMonthStats(
+  habit,
+  year = currentViewMonth.getFullYear(),
+  month = currentViewMonth.getMonth()
+) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const completedDaysInMonth = habit.completedDates
     ? habit.completedDates.filter((dateStr) => {

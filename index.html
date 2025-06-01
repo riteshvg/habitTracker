@@ -10,15 +10,38 @@
   <body>
     <div id="app">
       <h1>Daily Habit Tracker</h1>
-      <button id="settings-btn" class="settings-btn">⚙️ Settings</button>
-      <form id="add-habit-form">
+      <div class="app-header">
+        <div class="month-selector">
+          <label for="month-select">View Month:</label>
+          <select id="month-select"></select>
+        </div>
+        <div class="header-controls">
+          <button id="add-habit-btn" class="icon-btn" title="Add New Habit">
+            ➕
+          </button>
+          <button id="settings-btn" class="icon-btn" title="Settings">
+            ⚙️
+          </button>
+        </div>
+      </div>
+      <form id="add-habit-form" class="hidden">
         <label for="habit-name">Habit Name:</label>
         <input type="text" id="habit-name" name="habit-name" required />
         <label for="habit-description">Description (optional):</label>
         <input type="text" id="habit-description" name="habit-description" />
-        <button type="submit">Add Habit</button>
+        <div class="form-actions">
+          <button type="submit">Add Habit</button>
+          <button type="button" id="cancel-add-habit">Cancel</button>
+        </div>
       </form>
       <div id="habit-list-container"></div>
+
+      <!-- Loading Spinner -->
+      <div id="loading-spinner" class="loading-spinner">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading...</div>
+      </div>
+
       <!-- Monthly Statistics Graph -->
       <div class="monthly-overview">
         <div class="habit-selector">
@@ -41,6 +64,7 @@
         <div id="habits-settings-list"></div>
       </div>
     </div>
+    <div id="form-backdrop" class="form-backdrop"></div>
 
     <script src="script.js" defer></script>
   </body>
