@@ -121,26 +121,48 @@ exports.handler = async function (event, context) {
     }
 
     const data = event.body ? JSON.parse(event.body) : {};
-    const targetDate = data.date ? new Date(data.date) : new Date();
 
-    // Check if the date already exists in completedDates
-    const existingDate = habit.completedDates.find(
-      (date) =>
-        date.toISOString().split('T')[0] ===
-        targetDate.toISOString().split('T')[0]
-    );
+    // Handle bulk dates
+    if (data.dates && Array.isArray(data.dates)) {
+      // Convert string dates to Date objects and filter out duplicates
+      const newDates = data.dates.map((date) => new Date(date));
+      const existingDatesStr = habit.completedDates.map(
+        (d) => d.toISOString().split('T')[0]
+      );
 
-    if (existingDate) {
-      // If date exists, remove it (unchecking the box)
-      habit.completedDates = habit.completedDates.filter(
+      // Add only unique dates
+      newDates.forEach((date) => {
+        const dateStr = date.toISOString().split('T')[0];
+        if (!existingDatesStr.includes(dateStr)) {
+          habit.completedDates.push(date);
+        }
+      });
+    } else {
+      // Handle single date
+      const targetDate = data.date ? new Date(data.date) : new Date();
+
+      // Check if the date already exists in completedDates
+      const existingDate = habit.completedDates.find(
         (date) =>
-          date.toISOString().split('T')[0] !==
+          date.toISOString().split('T')[0] ===
           targetDate.toISOString().split('T')[0]
       );
-    } else {
-      // If date doesn't exist, add it (checking the box)
-      habit.completedDates.push(targetDate);
+
+      if (existingDate) {
+        // If date exists, remove it (unchecking the box)
+        habit.completedDates = habit.completedDates.filter(
+          (date) =>
+            date.toISOString().split('T')[0] !==
+            targetDate.toISOString().split('T')[0]
+        );
+      } else {
+        // If date doesn't exist, add it (checking the box)
+        habit.completedDates.push(targetDate);
+      }
     }
+
+    // Sort completedDates to ensure proper streak calculation
+    habit.completedDates.sort((a, b) => a - b);
 
     // Calculate longest streak from all dates
     habit.longestStreak = calculateStreak(habit.completedDates, false);

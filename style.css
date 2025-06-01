@@ -836,6 +836,50 @@ form#add-habit-form button[type='submit']:hover {
   display: block;
 }
 
+.bulk-actions {
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background-color: #f8fafc;
+  border-radius: 0.5rem;
+}
+
+.bulk-complete {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.bulk-complete label {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.bulk-complete select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  min-width: 200px;
+}
+
+.complete-all-btn {
+  padding: 0.5rem 1rem;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.complete-all-btn:hover {
+  background-color: #16a34a;
+}
+
+.complete-all-btn:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .progress-bar-container {
     height: 16px;

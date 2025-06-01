@@ -189,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     statsGrid.className = 'monthly-stats-grid';
 
     habitsArray.forEach((habit) => {
+      console.log('Rendering stats for habit:', habit.name);
       const monthStats = calculateMonthStats(habit, year, month);
       const statCard = document.createElement('div');
       statCard.className = 'stat-card';
@@ -697,6 +698,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Add event handler for bulk completion
+  habitsSettingsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('complete-all-btn')) {
+      const habitId = e.target.getAttribute('data-id');
+      const monthSelect = e.target.parentElement.querySelector('.month-select');
+      const selectedDate = new Date(monthSelect.value);
+
+      if (!monthSelect.value) {
+        alert('Please select a month first');
+        return;
+      }
+
+      if (
+        !confirm(
+          'This will mark ALL days in the selected month as complete. Continue?'
+        )
+      ) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Create array of all dates in the month
+        const dates = Array.from({ length: daysInMonth }, (_, i) => {
+          return new Date(year, month, i + 1).toISOString();
+        });
+
+        // Bulk update request
+        const response = await fetch(
+          `/.netlify/functions/completeHabit/${habitId}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dates: dates }),
+          }
+        );
+
+        if (!response.ok) throw new Error('Failed to complete all days');
+
+        alert('Successfully marked all days as complete!');
+        fetchHabitsForSettings();
+        fetchHabits(); // Update main view
+      } catch (err) {
+        console.error('Error in bulk completion:', err);
+        alert('Error marking days as complete: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  });
+
   // Handle add habit button and form
   const addHabitBtn = document.getElementById('add-habit-btn');
   const cancelAddHabitBtn = document.getElementById('cancel-add-habit');
@@ -726,23 +782,68 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchHabits();
 });
 
-function calculateMonthStats(
-  habit,
-  year = currentViewMonth.getFullYear(),
-  month = currentViewMonth.getMonth()
-) {
+function calculateMonthStats(habit, year, month) {
+  if (typeof year === 'undefined' || typeof month === 'undefined') {
+    const today = new Date();
+    year = today.getFullYear();
+    month = today.getMonth();
+  }
+
+  console.log('Calculating stats for:', {
+    habitName: habit.name,
+    year,
+    month,
+    completedDates: habit.completedDates?.length,
+  });
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const completedDaysInMonth = habit.completedDates
     ? habit.completedDates.filter((dateStr) => {
         const date = new Date(dateStr);
-        return date.getFullYear() === year && date.getMonth() === month;
+        const matches =
+          date.getFullYear() === year && date.getMonth() === month;
+        console.log('Checking date:', {
+          dateStr,
+          date: date.toISOString(),
+          year: date.getFullYear(),
+          month: date.getMonth(),
+          targetYear: year,
+          targetMonth: month,
+          matches,
+        });
+        return matches;
       }).length
     : 0;
 
   const percentage = ((completedDaysInMonth / daysInMonth) * 100).toFixed(1);
+  console.log('Stats calculated:', {
+    habitName: habit.name,
+    daysInMonth,
+    completedDaysInMonth,
+    percentage,
+  });
   return {
     completed: completedDaysInMonth,
     total: daysInMonth,
     percentage,
   };
+}
+
+function generateMonthOptions() {
+  const today = new Date();
+  const startDate = new Date(today.getFullYear(), 0); // Start from January
+  let options = [];
+
+  while (startDate <= today) {
+    const monthStr = startDate.toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+    options.push(
+      `<option value="${startDate.toISOString()}">${monthStr}</option>`
+    );
+    startDate.setMonth(startDate.getMonth() + 1);
+  }
+
+  return options.join('');
 }
