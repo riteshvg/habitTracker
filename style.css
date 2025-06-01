@@ -880,6 +880,37 @@ form#add-habit-form button[type='submit']:hover {
   cursor: not-allowed;
 }
 
+/* Affirmation Toast Styles */
+.affirmation-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateX(120%);
+  transition: all 0.3s ease-in-out;
+  max-width: 350px;
+  font-size: 16px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.affirmation-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.affirmation-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 768px) {
   .progress-bar-container {
     height: 16px;

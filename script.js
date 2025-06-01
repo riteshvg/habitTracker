@@ -506,7 +506,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         );
 
+        const data = await response.json();
         if (!response.ok) throw new Error('Failed to update habit completion');
+
+        // Show affirmation if present
+        if (data.affirmation) {
+          showAffirmation(data.affirmation);
+        }
 
         // Update both calendar and stats
         fetchHabits();
@@ -846,4 +852,72 @@ function generateMonthOptions() {
   }
 
   return options.join('');
+}
+
+// Function to display affirmation message
+function showAffirmation(message) {
+  if (!message) return;
+
+  // Remove any existing affirmation
+  const existingAffirmation = document.querySelector('.affirmation-toast');
+  if (existingAffirmation) {
+    existingAffirmation.remove();
+  }
+
+  const affirmationContainer = document.createElement('div');
+  affirmationContainer.className = 'affirmation-toast';
+  affirmationContainer.innerHTML = `
+      <div class="affirmation-content">
+        ${message}
+      </div>
+    `;
+
+  document.body.appendChild(affirmationContainer);
+  console.log('Showing affirmation:', message); // Debug log
+
+  // Trigger animation after a brief delay
+  requestAnimationFrame(() => {
+    affirmationContainer.classList.add('show');
+  });
+
+  // Remove after display
+  setTimeout(() => {
+    affirmationContainer.classList.remove('show');
+    setTimeout(() => {
+      if (affirmationContainer.parentNode) {
+        document.body.removeChild(affirmationContainer);
+      }
+    }, 300);
+  }, 5000);
+}
+
+// Update the toggleHabitCompletion function
+async function toggleHabitCompletion(habitId, date) {
+  try {
+    setLoading(true);
+    const response = await fetch(
+      `/.netlify/functions/completeHabit/${habitId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ date: date.toISOString() }),
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok) {
+      if (data.affirmation) {
+        showAffirmation(data.affirmation);
+      }
+      await loadHabits(); // Refresh habits display
+    } else {
+      console.error('Error:', data.error);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    setLoading(false);
+  }
 }

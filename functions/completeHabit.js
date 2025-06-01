@@ -1,3 +1,75 @@
+/**
+ * @fileoverview Habit Completion Service
+ *
+ * This file implements the POST endpoint for marking habits as complete/incomplete
+ * and managing streak calculations. It supports both single-date and bulk-date operations
+ * with comprehensive streak tracking.
+ *
+ * Key Features:
+ * 1. Toggle habit completion status
+ * 2. Bulk date completion
+ * 3. Automatic streak calculation
+ * 4. Duplicate date prevention
+ *
+ * Database Schema:
+ * @typedef {Object} Habit
+ * @property {string} name - Name of the habit
+ * @property {string} description - Optional description
+ * @property {Date[]} completedDates - Array of completion dates
+ * @property {Date} startDate - Habit creation date
+ * @property {number} streakCount - Current streak
+ * @property {number} longestStreak - Longest achieved streak
+ *
+ * Functions:
+ * @function connectToDatabase
+ *   Manages MongoDB connection for habit operations
+ *   @param {string} uri - MongoDB connection string
+ *   @returns {Promise<Connection>} Mongoose connection
+ *   Features:
+ *   - Connection pooling
+ *   - 5s server selection timeout
+ *   - 45s socket timeout for operations
+ *
+ * @function calculateStreak
+ *   Calculates habit completion streaks
+ *   @param {Date[]} dates - Array of completion dates
+ *   @param {boolean} isCurrentStreak - If true, calculates current streak; if false, longest streak
+ *   @returns {number} Length of the streak
+ *   Features:
+ *   - Handles date gaps
+ *   - Considers today/yesterday for current streaks
+ *   - Supports both current and longest streak calculations
+ *
+ * @function handler
+ *   Netlify serverless function handler for habit completion
+ *   @param {Object} event - Contains HTTP method, path params, and request body
+ *   @param {Object} context - Netlify function context
+ *   @returns {Promise<Object>} Response with updated habit
+ *
+ *   Request Body Formats:
+ *   Single Date:
+ *   {
+ *     "date": "YYYY-MM-DD" // Optional, defaults to current date
+ *   }
+ *
+ *   Bulk Dates:
+ *   {
+ *     "dates": ["YYYY-MM-DD", ...] // Array of dates to mark as complete
+ *   }
+ *
+ * Error Handling:
+ * - 400: Invalid/missing habit ID
+ * - 404: Habit not found
+ * - 405: Invalid HTTP method
+ * - 500: Database connection/operation errors
+ *
+ * Streak Calculation Rules:
+ * 1. Current streak breaks if no completion for more than one day
+ * 2. Streak increases only with consecutive days
+ * 3. Longest streak tracks the best historical performance
+ * 4. Duplicate dates are automatically filtered
+ */
+
 const mongoose = require('mongoose');
 
 const HabitSchema = new mongoose.Schema({
@@ -80,6 +152,49 @@ function calculateStreak(dates, isCurrentStreak = false) {
   }
 
   return isCurrentStreak ? currentStreak : maxStreak;
+}
+
+/**
+ * Generates an affirmation message based on streak length
+ * @param {number} streakCount - Current streak length
+ * @param {string} habitName - Name of the habit
+ * @returns {string|null} Affirmation message or null if no milestone reached
+ */
+function generateAffirmation(streakCount, habitName) {
+  const milestones = [
+    {
+      days: 30,
+      message:
+        "🌟 Incredible achievement! You've maintained ${habitName} for a whole month! This is now part of your lifestyle!",
+    },
+    {
+      days: 20,
+      message:
+        "🔥 Outstanding! 20 days of ${habitName}! You're building a powerful habit!",
+    },
+    {
+      days: 15,
+      message:
+        '⭐ Amazing consistency with ${habitName} for 15 days! Keep this momentum going!',
+    },
+    {
+      days: 5,
+      message:
+        '🎯 Great job! 5 days of ${habitName} shows your commitment to growth!',
+    },
+    {
+      days: 1,
+      message:
+        '🌱 Excellent start with ${habitName}! The journey of a thousand miles begins with a single step!',
+    },
+  ];
+
+  for (const milestone of milestones) {
+    if (streakCount === milestone.days) {
+      return milestone.message.replace('${habitName}', habitName);
+    }
+  }
+  return null;
 }
 
 exports.handler = async function (event, context) {
@@ -170,12 +285,16 @@ exports.handler = async function (event, context) {
     // Calculate current streak considering all dates
     habit.streakCount = calculateStreak(habit.completedDates, true);
 
+    // Generate affirmation if a milestone is reached
+    const affirmation = generateAffirmation(habit.streakCount, habit.name);
+
     const updatedHabit = await habit.save();
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: 'Habit marked as complete',
         habit: updatedHabit,
+        affirmation: affirmation,
       }),
     };
   } catch (error) {

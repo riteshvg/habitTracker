@@ -44,7 +44,7 @@ A comprehensive web application for tracking daily habits with a calendar-based 
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Backend**: Netlify Functions (Serverless)
 - **Data Visualization**: Chart.js
-- **Storage**: Database (implementation details in backend)
+- **Storage**: Mongo Cluster Database (implementation details in backend)
 
 ## Data Flow
 
@@ -69,37 +69,6 @@ A comprehensive web application for tracking daily habits with a calendar-based 
 - POST /.netlify/functions/completeHabit/{id}
 - PUT /.netlify/functions/editHabit/{id}
 - DELETE /.netlify/functions/deleteHabit/{id}
-
-## Blog Agent Data Flow
-
-The application can be extended to create a blog agent with the following data flow:
-
-1. **Content Generation**
-
-   - User inputs topic or theme
-   - System generates outline using AI
-   - Content is created following SEO best practices
-   - Auto-generation of meta descriptions and tags
-
-2. **Content Management**
-
-   - Integration with habit tracking for writing goals
-   - Automated scheduling of posts
-   - Version control and revision history
-   - Content approval workflow
-
-3. **Analytics Integration**
-
-   - Track writing habits and productivity
-   - Monitor post performance
-   - Generate engagement reports
-   - Analyze writing patterns
-
-4. **AI-Powered Optimization**
-   - SEO recommendations
-   - Content improvement suggestions
-   - Keyword optimization
-   - Reader engagement analysis
 
 ## Development Process
 

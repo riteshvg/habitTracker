@@ -1,3 +1,69 @@
+/**
+ * @fileoverview Habit Creation Service
+ *
+ * This file implements the POST endpoint for creating new habits in the Habit Tracker application.
+ * It handles habit creation, database connections, and input validation with comprehensive error handling.
+ *
+ * Key Features:
+ * 1. CORS Support for cross-origin requests
+ * 2. Input validation for required fields
+ * 3. Secure database operations
+ * 4. Detailed error logging and handling
+ *
+ * Database Schema:
+ * @typedef {Object} Habit
+ * @property {string} name - Required name of the habit
+ * @property {string} [description] - Optional description
+ * @property {Date[]} completedDates - Array tracking completion dates
+ * @property {Date} startDate - Habit creation date
+ * @property {number} streakCount - Current completion streak
+ * @property {number} longestStreak - Record streak length
+ *
+ * Functions:
+ * @function connectToDatabase
+ *   Manages MongoDB connection with retry logic
+ *   @param {string} uri - MongoDB connection string
+ *   @returns {Promise<Connection>} Mongoose connection
+ *   @throws {Error} Connection failure after retries
+ *   Features:
+ *   - 3 retry attempts with 2-second delays
+ *   - Enhanced error messages for common issues
+ *   - Timeout configurations for reliability
+ *
+ * @function handler
+ *   Netlify serverless function handler for habit creation
+ *   @param {Object} event - Contains HTTP method and request body
+ *   @param {Object} context - Netlify function context
+ *   @returns {Promise<Object>} Response with status and created habit
+ *
+ *   Request Body:
+ *   {
+ *     "name": string,       // Required
+ *     "description": string // Optional
+ *   }
+ *
+ *   Response (201):
+ *   {
+ *     "message": "Habit created",
+ *     "habit": Habit
+ *   }
+ *
+ * Error Handling:
+ * - 400: Missing required fields
+ * - 405: Invalid HTTP method
+ * - 500: Database connection issues
+ * - Custom error messages for common MongoDB problems:
+ *   • IP whitelist issues
+ *   • Authentication failures
+ *   • Connection timeouts
+ *
+ * Security Features:
+ * - CORS headers configuration
+ * - Input sanitization
+ * - Sensitive data redaction in logs
+ * - Proper error message handling
+ */
+
 const mongoose = require('mongoose');
 
 const HabitSchema = new mongoose.Schema({
